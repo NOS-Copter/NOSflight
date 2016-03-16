@@ -69,9 +69,15 @@
 #define MPU6500_SPI_INSTANCE             NAZE_SPI_INSTANCE
 
 
-#define USE_FLASHFS
+//#define USE_FLASHFS	//uncommented b/c using SPI for RF
 
-#define USE_FLASH_M25P16
+//#define USE_FLASH_M25P16	//uncommented b/c using SPI for RF
+
+#define USE_NRF24
+
+#define NRF24_CS_GPIO        NAZE_SPI_CS_GPIO
+#define NRF24_CS_PIN         NAZE_SPI_CS_PIN
+#define NRF24_SPI_INSTANCE   NAZE_SPI_INSTANCE
 
 #define EXTI_CALLBACK_HANDLER_COUNT 3 // MPU data ready, MAG data ready, BMP085 EOC
 
