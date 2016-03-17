@@ -29,7 +29,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "drivers/system.h"
 #include "common/utils.h"
 
-
+#include "debug.h"
 // when adding new receivers, the following functions must be included:
 // initrx()   // initializes the r/c receiver
 // readrx()   // loads global.rxvalues with r/c values as fixedpointnum's from -1 to 1 (0 is the center).
@@ -100,6 +100,7 @@ static uint8_t txid[3];
 static uint8_t txidsize;
 static uint8_t fhsize;
 static uint8_t freqhopping[MAXFHSIZE];
+static uint16_t data[8];
 static uint64_t debugvalue[4];
 static unsigned long packet_timer;
 //static uint32_t rx_timeout;
@@ -160,6 +161,7 @@ static void prepare_to_bind(void)
 
 static void switch_channel(void)
 {
+    debug[0]++;
     NRF24L01_WriteReg(NRF24L01_05_RF_CH, rf_channels[rf_ch_num]);
     if (++rf_ch_num >= nfreqchannels) rf_ch_num = 0;
 }
@@ -260,15 +262,10 @@ void initrx(void)
     
     valid_packets = missed_packets = bad_packets = 0;
     
-    if (boundprotocol == PROTO_NONE) {
-        bind_phase = PHASE_NOT_BOUND;
-        prepare_to_bind();
-    } else {
-        // Prepare to listen to bound protocol, if fails
-        // try to bind
-        bind_phase = PHASE_JUST_BOUND;
-        set_bound();
-    }
+    boundprotocol = PROTO_NONE;
+    bind_phase = PHASE_NOT_BOUND;
+    prepare_to_bind();
+
     switch_channel();
 }
 
@@ -329,8 +326,10 @@ static bool decode_packet(uint8_t *packet, uint16_t *data)
 
 bool rxNRF24ReceivePacket(void)
 {
-    uint16_t data[8];
-
+    //debug[0]=NRF24L01_ReadReg(NRF24L01_00_CONFIG);
+    debug[1]=(millis()>>10)&0x0f;
+    debug[2]=NRF24L01_ReadReg((millis()>>10)&0x1f);
+    debug[3]=NRF24L01_ReadReg(NRF24L01_07_STATUS);
     if (!(NRF24L01_ReadReg(NRF24L01_07_STATUS) & BV(NRF24L01_07_RX_DR))) {
         uint32_t t = (micros()-packet_timer);
         if (t > rx_timeout) {
@@ -360,9 +359,21 @@ bool rxNRF24ReceivePacket(void)
     // reset the failsafe timer
 }
 
+static uint16_t nrf24ReadRawRC(rxRuntimeConfig_t *rxRuntimeConfig, uint8_t chan)
+{
+    UNUSED(rxRuntimeConfig);
+    // Linear fitting values read from OpenTX-ppmus and comparing with values received by X4R
+    // http://www.wolframalpha.com/input/?i=linear+fit+%7B173%2C+988%7D%2C+%7B1812%2C+2012%7D%2C+%7B993%2C+1500%7D
+    return 1000 + 1000 * data[chan]  * 4;
+}
+
 void rxNRF24Init(rxConfig_t *rxConfig, rxRuntimeConfig_t *rxRuntimeConfig, rcReadRawDataPtr *callback){
      UNUSED(rxConfig);
      UNUSED(callback);
      rxRuntimeConfig->channelCount = 8;
+     debug[3]=1;
      initrx();
+    if (callback)
+        *callback = nrf24ReadRawRC;
  }
+

@@ -100,6 +100,8 @@ static void usleep(unsigned long delayus)
 */
 void NRF24L01_Initialize()
 {
+    //set to 4.5MHz
+    spiSetDivisor(NRF24_SPI_INSTANCE, SPI_0_5625MHZ_CLOCK_DIVIDER);
     rf_setup = 0x0F;
 }    
 
